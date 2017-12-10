@@ -1,22 +1,30 @@
 #!/usr/bin/python3
 # coding: utf8
 
+import argparse
 import requests
 import sys
-import os
 
-URL1 = 'https://www.arte.tv/papi/tvguide/videos/ARTE_PLUS_SEVEN/F.json?includeLongRights=true'
+URL = 'https://www.arte.tv/papi/tvguide/videos/ARTE_PLUS_SEVEN/F.json?includeLongRights=true'
+QUALITE = [ 'LQ','MQ','EQ','SQ' ]
 
-if len(sys.argv) != 2:
-  print('Syntaxe : {0} <émission à rechercher>'.format(os.path.basename(sys.argv[0])))
+parser = argparse.ArgumentParser(add_help=False)
+parser.add_argument('-o', action='store_true', help='Version originale')
+parser.add_argument('-q', type=int, nargs='?', choices=range(0,4), default=1, help='Qualité (0=basse à 3=haute)')
+parser.add_argument('keyword', nargs='?')
+
+opt = parser.parse_args()
+
+if opt.keyword is None:
+  parser.print_help()
 
 else:
-
-  js = requests.get(URL1).json()
+  langue = 3 if opt.o else 1
+  js = requests.get(URL).json()
 
   liste = [] 
   for emission in js['paginatedCollectionWrapper']['collection']:
-    if emission['VTI'].lower().find(sys.argv[1].lower()) != -1:
+    if emission['VTI'].lower().find(opt.keyword.lower()) != -1:
       liste.append(emission)
 
   for cpt in range(len(liste)):
@@ -31,8 +39,9 @@ else:
     if indice <= len(liste):
       js = requests.get(liste[indice-1]['videoPlayerUrl']).json()
       js2 = js['videoJsonPlayer']
-      nomfich = js2['VST']['VNA'] + '_ARTE.mp4'
-      url = js2['VSR']['HTTP_MP4_EQ_1']['url']
+      nomfich = js2['VST']['VNA'] + '_ARTE'
+      nomfich += '_VO.mp4' if opt.o else '.mp4'
+      url = js2['VSR']['HTTP_MP4_{0}_{1}'.format(QUALITE[opt.q],langue)]['url']
       r = requests.get(url, stream=True)
       with open(nomfich, 'wb') as fd:
         print('> {0} '.format(nomfich),end='')
